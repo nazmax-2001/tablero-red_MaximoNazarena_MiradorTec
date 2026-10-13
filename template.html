@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mediciones de Red</title>
+<script>__PLOTLY__</script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f4f2;
+    --surface: #fcfcfb;
+    --border: #e4e3df;
+    --text: #0b0b0b;
+    --text-2: #52514e;
+    --text-3: #8a8984;
+    --grid: #ebeae6;
+    --accent: #2a78d6;
+    --chip-on-text: #ffffff;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --heat-0: #ffffff; --heat-1: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #121211; --surface: #1a1a19; --border: #2e2e2c;
+      --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e88; --grid: #2a2a28;
+      --accent: #3987e5;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+      --heat-0: #1a1a19; --heat-1: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --border: #2e2e2c;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e88; --grid: #2a2a28;
+    --accent: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --heat-0: #1a1a19; --heat-1: #3987e5;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 16px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  .meta { color: var(--text-2); font-size: 13px; }
+
+  .filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .filtros .etq { color: var(--text-2); font-size: 13px; margin-right: 4px; }
+  .chip {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    padding: 6px 14px; border-radius: 999px; font: inherit; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--chip-on-text); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+  .kpi .lbl { color: var(--text-2); font-size: 13px; }
+  .kpi .val { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .val small { font-size: 15px; font-weight: 500; color: var(--text-2); margin-left: 3px; }
+
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+  .c4 { grid-column: span 4; } .c5 { grid-column: span 5; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+  .card h2 { font-size: 15px; margin: 0; }
+  .card .sub { color: var(--text-2); font-size: 12.5px; margin: 2px 0 8px; }
+  .chart { width: 100%; height: 300px; }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+  th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-2); font-weight: 500; vertical-align: bottom; }
+  tfoot td { font-weight: 600; border-bottom: none; }
+  .tabla-scroll { overflow-x: auto; }
+  td.heat { color: var(--text); }
+  .vacio { color: var(--text-3); padding: 40px 0; text-align: center; }
+
+  footer { margin-top: 20px; color: var(--text-3); font-size: 12px; }
+
+  @media (max-width: 900px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .c4, .c5, .c7, .c8 { grid-column: span 12; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Mediciones de red</h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="filtros" role="group" aria-label="Filtrar por piso">
+    <span class="etq">Piso:</span>
+    <div id="chips" style="display:contents"></div>
+  </div>
+
+  <section class="kpis">
+    <div class="card kpi"><div class="lbl">Descarga promedio</div><div class="val" id="k-desc"></div></div>
+    <div class="card kpi"><div class="lbl">Rendimiento promedio</div><div class="val" id="k-pct"></div></div>
+    <div class="card kpi"><div class="lbl">Ping promedio</div><div class="val" id="k-ping"></div></div>
+    <div class="card kpi"><div class="lbl">Mediciones</div><div class="val" id="k-n"></div></div>
+  </section>
+
+  <section class="grid">
+    <div class="card c7">
+      <h2>Rendimiento por red</h2>
+      <div class="sub">% de la velocidad contratada que se obtiene en promedio</div>
+      <div class="chart" id="g-red"></div>
+    </div>
+    <div class="card c5">
+      <h2>Rendimiento por mes</h2>
+      <div class="sub">% promedio de la velocidad contratada</div>
+      <div class="chart" id="g-mes"></div>
+    </div>
+
+    <div class="card c12">
+      <h2>Descarga promedio por hora y red</h2>
+      <div class="sub">Mbps según la hora de la medición</div>
+      <div class="chart" id="g-hora" style="height:340px"></div>
+    </div>
+
+    <div class="card c5">
+      <h2>Resumen por piso</h2>
+      <div class="sub">Promedios de todas las redes</div>
+      <div class="tabla-scroll" id="t-piso"></div>
+    </div>
+    <div class="card c7">
+      <h2>Descarga promedio por piso y red</h2>
+      <div class="sub">Mbps · el color más intenso indica mayor velocidad</div>
+      <div class="tabla-scroll" id="t-matriz"></div>
+    </div>
+  </section>
+
+  <footer>Datos cargados por formulario. El tablero se regenera automáticamente cuando se actualiza el archivo de mediciones.</footer>
+</div>
+
+<script>
+const DATOS = __DATOS__;
+const META = __META__;
+
+const PISOS = ["Planta Baja", "1° Piso", "2° Piso", "3° Piso"];
+// El color sigue a la red, nunca a su posición: si un filtro deja menos redes, no se repintan.
+const REDES = [...new Set(DATOS.map(d => d.red))].sort((a, b) => velocidad(a) - velocidad(b) || a.localeCompare(b));
+const COLOR_RED = Object.fromEntries(REDES.map((r, i) => [r, `--s${(i % 4) + 1}`]));
+
+function velocidad(red) { const m = red.match(/\((\d+)\s*mbps\)/i); return m ? +m[1] : 999; }
+function nombreCorto(red) { return red.replace(/\s*\(\d+\s*mbps\)/i, "").replace(/"/g, ""); }
+function partir(txt, ancho) {
+  const lineas = []; let actual = "";
+  for (const p of txt.split(" ")) {
+    if ((actual + " " + p).trim().length > ancho && actual) { lineas.push(actual); actual = p; }
+    else actual = (actual + " " + p).trim();
+  }
+  lineas.push(actual);
+  return lineas.join("<br>");
+}
+function etiquetaRed(red) { const v = velocidad(red); return `${nombreCorto(red)} (${v} Mbps)`; }
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const prom = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+const fmt = (x, dec = 1) => x == null || isNaN(x) ? "–" : x.toLocaleString("es-AR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+function agrupar(filas, clave) {
+  const m = new Map();
+  for (const f of filas) { const k = clave(f); if (!m.has(k)) m.set(k, []); m.get(k).push(f); }
+  return m;
+}
+
+// ---- Estado del filtro ----
+let seleccion = new Set(); // vacío = todos los pisos
+const pisosPresentes = PISOS.filter(p => DATOS.some(d => d.piso === p))
+  .concat([...new Set(DATOS.map(d => d.piso))].filter(p => !PISOS.includes(p)));
+
+function dibujarChips() {
+  const cont = document.getElementById("chips");
+  cont.innerHTML = "";
+  const opciones = ["Todos", ...pisosPresentes];
+  for (const op of opciones) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = op;
+    const activo = op === "Todos" ? seleccion.size === 0 : seleccion.has(op);
+    b.setAttribute("aria-pressed", activo);
+    b.onclick = () => {
+      if (op === "Todos") seleccion.clear();
+      else {
+        seleccion.has(op) ? seleccion.delete(op) : seleccion.add(op);
+        if (seleccion.size === pisosPresentes.length) seleccion.clear();
+      }
+      actualizar();
+    };
+    cont.appendChild(b);
+  }
+}
+
+function filtrados() { return seleccion.size ? DATOS.filter(d => seleccion.has(d.piso)) : DATOS; }
+
+// ---- Plotly: estilo común ----
+function layoutBase(extra = {}) {
+  return Object.assign({
+    margin: { l: 44, r: 12, t: 8, b: 40 },
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    font: { family: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", size: 12, color: css("--text-2") },
+    hoverlabel: { bgcolor: css("--surface"), bordercolor: css("--border"), font: { color: css("--text"), size: 12 } },
+    xaxis: { gridcolor: css("--grid"), linecolor: css("--border"), zeroline: false, fixedrange: true },
+    yaxis: { gridcolor: css("--grid"), linecolor: css("--border"), zeroline: false, fixedrange: true },
+    showlegend: false,
+  }, extra);
+}
+const CONFIG = { displayModeBar: false, responsive: true, locale: "es" };
+
+function limpiar(id) {
+  const el = document.getElementById(id);
+  if (el.querySelector(".vacio")) el.innerHTML = "";
+}
+function vacio(id) {
+  Plotly.purge(id);
+  document.getElementById(id).innerHTML = '<div class="vacio">Sin mediciones para este filtro</div>';
+}
+
+// ---- Gráficos ----
+function graficoRed(filas) {
+  const g = agrupar(filas, d => d.red);
+  const redes = REDES.filter(r => g.has(r)).map(r => ({ r, v: prom(g.get(r).map(d => d.pct)), n: g.get(r).length }))
+    .sort((a, b) => a.v - b.v);
+  if (!redes.length) return vacio("g-red");
+  limpiar("g-red");
+  Plotly.react("g-red", [{
+    type: "bar", orientation: "h",
+    y: redes.map(x => partir(etiquetaRed(x.r), window.innerWidth < 700 ? 18 : 40)), x: redes.map(x => x.v),
+    marker: { color: redes.map(x => css(COLOR_RED[x.r])) },
+    text: redes.map(x => fmt(x.v) + " %"), textposition: "outside", cliponaxis: false,
+    textfont: { color: css("--text"), size: 12 },
+    customdata: redes.map(x => x.n),
+    hovertemplate: "<b>%{y}</b><br>Rendimiento: %{x:.1f} %<br>Mediciones: %{customdata}<extra></extra>",
+  }], layoutBase({
+    margin: { l: 10, r: 50, t: 4, b: 30 },
+    bargap: 0.35,
+    xaxis: { range: [0, 105], ticksuffix: " %", gridcolor: css("--grid"), zeroline: false, fixedrange: true },
+    yaxis: { automargin: true, fixedrange: true, tickfont: { color: css("--text"), size: 12 } },
+  }), CONFIG);
+}
+
+function graficoMes(filas) {
+  const g = agrupar(filas, d => d.anio * 100 + d.mes);
+  const claves = [...g.keys()].sort((a, b) => a - b);
+  if (!claves.length) return vacio("g-mes");
+  limpiar("g-mes");
+  const unAnio = new Set(claves.map(k => Math.floor(k / 100))).size === 1;
+  const etiquetas = claves.map(k => { const m = META.meses[(k % 100) - 1]; return unAnio ? m : `${m} ${Math.floor(k / 100)}`; });
+  const vals = claves.map(k => prom(g.get(k).map(d => d.pct)));
+  Plotly.react("g-mes", [{
+    type: "scatter", mode: "lines+markers", x: etiquetas, y: vals,
+    line: { color: css("--accent"), width: 2 }, marker: { size: 8, color: css("--accent"), line: { color: css("--surface"), width: 2 } },
+    customdata: claves.map(k => g.get(k).length),
+    hovertemplate: "<b>%{x}</b><br>Rendimiento: %{y:.1f} %<br>Mediciones: %{customdata}<extra></extra>",
+  }], layoutBase({ yaxis: { automargin: true, range: [0, 100], ticksuffix: " %", gridcolor: css("--grid"), zeroline: false, fixedrange: true } }), CONFIG);
+}
+
+function graficoHora(filas) {
+  if (!filas.length) return vacio("g-hora");
+  limpiar("g-hora");
+  const porRed = agrupar(filas, d => d.red);
+  const horas = [...new Set(filas.map(d => d.hora))].sort((a, b) => a - b);
+  const trazas = REDES.filter(r => porRed.has(r)).map(r => {
+    const gh = agrupar(porRed.get(r), d => d.hora);
+    const hs = horas.filter(h => gh.has(h));
+    return {
+      type: "scatter", mode: "lines+markers", name: etiquetaRed(r),
+      x: hs, y: hs.map(h => prom(gh.get(h).map(d => d.descarga))),
+      customdata: hs.map(h => gh.get(h).length),
+      line: { color: css(COLOR_RED[r]), width: 2 },
+      marker: { size: 8, color: css(COLOR_RED[r]), line: { color: css("--surface"), width: 2 } },
+      hovertemplate: "%{y:.1f} Mbps <span style='color:" + css("--text-3") + "'>(%{customdata} med.)</span>",
+    };
+  });
+  Plotly.react("g-hora", trazas, layoutBase({
+    showlegend: true,
+    legend: { orientation: "h", y: -0.18, x: 0, font: { color: css("--text"), size: 12 } },
+    margin: { l: 48, r: 12, t: 8, b: 70 },
+    hovermode: "x unified",
+    xaxis: { tickvals: horas, ticktext: horas.map(h => `${h} h`), gridcolor: css("--grid"), zeroline: false, fixedrange: true,
+             showspikes: true, spikemode: "across", spikethickness: 1, spikecolor: css("--text-3"), spikedash: "solid" },
+    yaxis: { automargin: true, rangemode: "tozero", ticksuffix: " Mbps", gridcolor: css("--grid"), zeroline: false, fixedrange: true },
+  }), CONFIG);
+}
+
+// ---- Tablas ----
+function tablaPiso(filas) {
+  const el = document.getElementById("t-piso");
+  if (!filas.length) { el.innerHTML = '<div class="vacio">Sin mediciones para este filtro</div>'; return; }
+  const g = agrupar(filas, d => d.piso);
+  const pisos = pisosPresentes.filter(p => g.has(p));
+  let h = "<table><thead><tr><th>Piso</th><th>Descarga<br>(Mbps)</th><th>Ping<br>(ms)</th><th>Rend.<br>(%)</th><th>Med.</th></tr></thead><tbody>";
+  for (const p of pisos) {
+    const f = g.get(p);
+    h += `<tr><td>${p}</td><td>${fmt(prom(f.map(d => d.descarga)), 2)}</td><td>${fmt(prom(f.map(d => d.ping)), 2)}</td><td>${fmt(prom(f.map(d => d.pct)))}</td><td>${f.length}</td></tr>`;
+  }
+  h += `</tbody><tfoot><tr><td>Total</td><td>${fmt(prom(filas.map(d => d.descarga)), 2)}</td><td>${fmt(prom(filas.map(d => d.ping)), 2)}</td><td>${fmt(prom(filas.map(d => d.pct)))}</td><td>${filas.length}</td></tr></tfoot></table>`;
+  el.innerHTML = h;
+}
+
+function mezclar(c1, c2, t) {
+  const a = c1.match(/\w\w/g).map(x => parseInt(x, 16)), b = c2.match(/\w\w/g).map(x => parseInt(x, 16));
+  return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+
+function tablaMatriz(filas) {
+  const el = document.getElementById("t-matriz");
+  if (!filas.length) { el.innerHTML = '<div class="vacio">Sin mediciones para este filtro</div>'; return; }
+  const redes = REDES.filter(r => filas.some(d => d.red === r));
+  const pisos = pisosPresentes.filter(p => filas.some(d => d.piso === p));
+  const celda = (fs) => fs.length ? prom(fs.map(d => d.descarga)) : null;
+  const valores = pisos.flatMap(p => redes.map(r => celda(filas.filter(d => d.piso === p && d.red === r)))).filter(v => v != null);
+  const max = Math.max(...valores, 1);
+  const c0 = css("--heat-0"), c1 = css("--heat-1");
+  const fondo = v => v == null ? "transparent" : mezclar(c0, c1, 0.08 + 0.42 * (v / max));
+
+  let h = "<table><thead><tr><th>Piso</th>" + redes.map(r => `<th>${nombreCorto(r)}<br><span style="font-weight:400;color:var(--text-3)">${velocidad(r)} Mbps</span></th>`).join("") + "</tr></thead><tbody>";
+  for (const p of pisos) {
+    h += `<tr><td>${p}</td>`;
+    for (const r of redes) {
+      const fs = filas.filter(d => d.piso === p && d.red === r);
+      const v = celda(fs);
+      h += `<td class="heat" style="background:${fondo(v)}" title="${p} · ${nombreCorto(r)}: ${fs.length} mediciones">${fmt(v, 2)}</td>`;
+    }
+    h += "</tr>";
+  }
+  h += "</tbody><tfoot><tr><td>Total</td>" + redes.map(r => `<td>${fmt(celda(filas.filter(d => d.red === r)), 2)}</td>`).join("") + "</tr></tfoot></table>";
+  el.innerHTML = h;
+}
+
+// ---- Render ----
+function actualizar() {
+  const f = filtrados();
+  dibujarChips();
+  document.getElementById("k-desc").innerHTML = `${fmt(prom(f.map(d => d.descarga)), 2)}<small>Mbps</small>`;
+  document.getElementById("k-pct").innerHTML = `${fmt(prom(f.map(d => d.pct)), 1)}<small>%</small>`;
+  document.getElementById("k-ping").innerHTML = `${fmt(prom(f.map(d => d.ping)), 1)}<small>ms</small>`;
+  document.getElementById("k-n").textContent = f.length.toLocaleString("es-AR");
+  for (const fn of [graficoRed, graficoMes, graficoHora, tablaPiso, tablaMatriz]) {
+    try { fn(f); } catch (e) { console.error(fn.name, e); }
+  }
+}
+
+document.getElementById("meta").textContent = `Mediciones del ${META.desde} al ${META.hasta} · Actualizado ${META.actualizado}`;
+actualizar();
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", actualizar);
+let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(actualizar, 250); });
+</script>
+</body>
+</html>
